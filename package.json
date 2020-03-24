@@ -1,0 +1,19 @@
+{
+  "name": "provider-gcp",
+  "version": "1.0.0",
+  "description": "SnapMaster provider for Google Cloud Platform",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/snapmaster-io/provider-gcp.git"
+  },
+  "author": "Omri Gazitt",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/snapmaster-io/provider-gcp/issues"
+  },
+  "homepage": "https://github.com/snapmaster-io/provider-gcp#readme"
+}
