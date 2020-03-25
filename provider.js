@@ -199,7 +199,7 @@ const getCommand = (action, param) => {
           console.error(`getCommand: action ${action} requires service name`);
           return null;
         }
-        return `gcloud run deploy ${service} --image gcr.io/${project}/${image} --platform managed`;
+        return `gcloud run deploy ${service} --image gcr.io/${project}/${image} --platform managed --allow-unauthenticated --region ${region}`;
       default:
         console.error(`getCommand: unknown command ${action}`);
         return null;

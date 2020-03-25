@@ -4,16 +4,35 @@
   "description": "SnapMaster provider for Google Cloud Platform",
   "main": "index.js",
   "scripts": {
+    "start": "ENV=dev node index.js",
+    "start:dev": "ENV=dev node index.js",
+    "start:devhosted": "ENV=devhosted node index.js",
+    "start:prod": "ENV=prod node index.js",
+    "build:dev": "PROJ=snapmaster-dev SVC=provider-gcp scripts/build.sh",
+    "build:prod": "cp Dockerfile-prod Dockerfile; PROJ=snapmaster SVC=provider-gcp scripts/build.sh; cp Dockerfile-dev Dockerfile",
+    "deploy:dev": "PROJ=snapmaster-dev SVC=provider-gcp scripts/deploy.sh",
+    "deploy:prod": "PROJ=snapmaster SVC=provider-gcp scripts/deploy.sh",
+    "activate:dev": "CONFIGURATION=snapmaster-dev scripts/activate.sh",
+    "activate:prod": "CONFIGURATION=snapmaster-prod scripts/activate.sh",
+    "push:dev": "npm run activate:dev && npm run build:dev && npm run deploy:dev",
+    "push:prod": "npm run activate:prod && npm run build:prod && npm run deploy:prod",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/snapmaster-io/provider-gcp.git"
+    "url": "git://github.com/snapmaster-io/provider-gcp.git"
   },
   "author": "Omri Gazitt",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/snapmaster-io/provider-gcp/issues"
   },
-  "homepage": "https://github.com/snapmaster-io/provider-gcp#readme"
+  "homepage": "https://github.com/snapmaster-io/provider-gcp#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "express-jwt": "^5.3.1",
+    "jwks-rsa": "^1.7.0",
+    "shelljs": "^0.8.3"
+  }
 }
