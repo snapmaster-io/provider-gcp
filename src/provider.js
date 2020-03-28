@@ -15,7 +15,7 @@ const { mkdir, cd, rm, echo, exec, tempdir } = require('shelljs');
 //const googleauth = require('../../services/googleauth');
 //const provider = require('../provider');
 //const database = require('../../data/database');
-const requesthandler = require('./src/requesthandler');
+const requesthandler = require('./requesthandler');
 //const environment = require('./environment');
 const workerpool = require('workerpool');
 
