@@ -33,6 +33,7 @@
     "express": "^4.17.1",
     "express-jwt": "^5.3.1",
     "jwks-rsa": "^1.7.0",
-    "shelljs": "^0.8.3"
+    "shelljs": "^0.8.3",
+    "workerpool": "^5.0.4"
   }
 }
