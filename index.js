@@ -15,20 +15,6 @@ const environment = require('./src/environment');
 environment.setEnv(account);
 environment.setDevMode(configuration === environment.dev);
 
-/*
-// import providers, database, storage, data access, datapipeline, profile, connections layers
-const providers = require('./src/providers/providers');
-const database = require('./src/data/database');
-
-// get persistence provider based on environment variable
-const persistenceProvider = process.env.PROVIDER || 'firestore';
-console.log('provider:', persistenceProvider);
-
-// set database persistence layer based on provider and environment
-database.setProvider(persistenceProvider);
-database.setEnv(configuration);
-*/
-
 // create a new express app
 const app = express();
 
@@ -42,7 +28,7 @@ app.use(bodyParser.urlencoded({
 }));
 
 // create route handlers for the provider
-const provider = require('./provider');
+const provider = require('./src/provider');
 provider.createHandlers(app);
 
 // Launch the API Server at PORT, or default port 8080
