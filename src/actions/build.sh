@@ -13,7 +13,7 @@ ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 
 # clone the repo
 git clone $SM_repo
-cd $SM_repo
+cd `basename $SM_repo`
 
 # build the image from the current directory using the credentials set up above
 gcloud --account snapmaster@$SM_project.iam.gserviceaccount.com --project $SM_project builds submit --tag gcr.io/$SM_project/$SM_image
