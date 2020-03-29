@@ -8,9 +8,6 @@ echo $SERVICECREDS >creds.json
 # set up gcloud authentication
 gcloud auth activate-service-account snapmaster@$SM_project.iam.gserviceaccount.com --key-file=creds.json --project=$SM_project
 
-# add the git host to known hosts
-ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-
 # clone the repo
 git clone $SM_repo
 cd `basename $SM_repo`
@@ -23,4 +20,4 @@ gcloud auth revoke snapmaster@$SM_project.iam.gserviceaccount.com
 
 # remove the work directory
 cd /
-rmdir /tmp/$ACTIVESNAPID
+rm -fr /tmp/$ACTIVESNAPID
