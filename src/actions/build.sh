@@ -6,20 +6,20 @@ cd /tmp/$ACTIVESNAPID
 echo $SERVICECREDS >creds.json
 
 # set up gcloud authentication
-gcloud auth activate-service-account snapmaster@$PROJECT.iam.gserviceaccount.com --key-file=creds.json --project=$PROJECT
+gcloud auth activate-service-account snapmaster@$SM_project.iam.gserviceaccount.com --key-file=creds.json --project=$SM_project
 
 # add the git host to known hosts
 ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 
 # clone the repo
-git clone $REPO
-cd $REPO
+git clone $SM_repo
+cd $SM_repo
 
 # build the image from the current directory using the credentials set up above
-gcloud --account snapmaster@$PROJECT.iam.gserviceaccount.com --project $PROJECT builds submit --tag gcr.io/$PROJECT/$SERVICE
+gcloud --account snapmaster@$SM_project.iam.gserviceaccount.com --project $SM_project builds submit --tag gcr.io/$SM_project/$SM_image
 
 # revoke the credentials
-gcloud auth revoke snapmaster@$PROJECT.iam.gserviceaccount.com
+gcloud auth revoke snapmaster@$SM_project.iam.gserviceaccount.com
 
 # remove the work directory
 cd /

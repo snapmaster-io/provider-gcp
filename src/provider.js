@@ -6,6 +6,7 @@ const { execFile } = require('child_process');
 const execAsync = (cmd, args, options) => {
   return new Promise((resolve, reject) => {
     execFile(cmd, args, options, (error, stdout, stderr) => {
+      // resolve promise with an object containing all parameters
       resolve({ error, stdout, stderr });
     });
   });
@@ -47,9 +48,9 @@ const invokeAction = async (request) => {
     }
 
     // IMPLEMENTATION NOTE:
-    //   current implementation shell-execs gcloud SDK commands, because the REST API for 
-    //   google cloud build and google cloud run is pretty gnarly, and the node.js packages 
-    //   are either difficult to use or nonexistent.
+    //   current implementation shell-execs scripts containing gcloud SDK commands, because 
+    //   the REST API for google cloud build and google cloud run is pretty gnarly, and the  
+    //   node.js packages are either difficult to use or nonexistent.
 
     // obtain the service creds from the connectionInfo
     const serviceCredentials = await getServiceCredentials(connectionInfo);
@@ -60,12 +61,14 @@ const invokeAction = async (request) => {
 
     console.log(`gcp: executing action ${action} in project ${project}`);
 
-    // construct script name, environment, and full command
+    // construct script name and environment
     const script = `./src/actions/${action}.sh`;
     const env = { ...process.env, ...getEnvironment(param), ACTIVESNAPID: activeSnapId, SERVICECREDS: serviceCredentials };
+
+    // execute the command and await its output
     const output = await executeCommand(script, env);
 
-    console.log(`gcp: finished executing action ${action} with output ${output}`);
+    console.log(`gcp: finished executing action ${action}, stdout: ${output && output.stdout}, stderr: ${output && output.stderr}`);
 
     // return output
     return output;
@@ -77,8 +80,6 @@ const invokeAction = async (request) => {
 
 const executeCommand = async (command, env) => {
   try {
-    // execute asynchronously so as to not block the web thread
-    //const returnVal = exec(command, { silent: true });
     const returnVal = await execAsync(command, [], { env: env });
     return returnVal;
   } catch (error) {
@@ -87,17 +88,17 @@ const executeCommand = async (command, env) => {
   }
 }
 
+// create an environemnt object from the param with keys starting with 'SM_'
 const getEnvironment = (param) => {
-  //let env = '';
   const env = {};
   for (const key in param) {
-    //env += `${key.toUpperCase()}=${param[key]} `;
-    const upperKey = key.toUpperCase();
-    env[upperKey] = param[key];
+    const prefixedKey = `SM_${key}`;
+    env[prefixedKey] = param[key];
   }
   return env;
 }
 
+// get the service credentials from the keyfile content stored in the connection info
 const getServiceCredentials = async (connectionInfo) => {
   try {
     const key = connectionInfo && connectionInfo.find(c => c.name === 'key');
