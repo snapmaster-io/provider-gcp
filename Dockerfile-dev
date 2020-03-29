@@ -15,5 +15,8 @@ RUN npm install --only=production
 # Copy local code to the container image.
 COPY . ./
 
+# set environment variable ENV to hosting type
+ENV ENV=devhosted
+
 # Run the web service on container startup.
-CMD [ "npm", "run", "start:devhosted" ]
+CMD [ "node", "./index.js"]

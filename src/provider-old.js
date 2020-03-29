@@ -1,9 +1,12 @@
-// GCP provider actions
+// GCP provider
 
-//const { mkdir, cd, rm, exec, echo, tempdir } = require('shelljs');
-const workerpool = require('workerpool');
+const { mkdir, cd, rm, echo, exec, tempdir } = require('shelljs');
+const { checkJwt, logRequest } = require('./requesthandler');
 const { execFile } = require('child_process');
+const workerpool = require('workerpool');
 
+// create a worker pool using an external worker script
+const pool = workerpool.pool(__dirname + '/actions/actions.js');
 
 const execAsync = (cmd, args, options) => {
   return new Promise((resolve, reject) => {
@@ -13,44 +16,80 @@ const execAsync = (cmd, args, options) => {
   });
 }
 
-const providerName = 'gcp';
-
 const actions = {
   build: 'build',
   deploy: 'deploy'
 }
 
-const invokeAction = async (action, serviceCredentials, activeSnapId, param) => {
-  try {
-    console.log(`invokeAction action ${action}, activeSnapId ${activeSnapId}, ${serviceCredentials}`);
-    // construct script name, environment, and full command
-    const script = `./${action}.sh`;
-    //const env = getEnvironment(param);
-    const env = { ...process.env, ...getEnvironment(param), ACTIVESNAPID: activeSnapId, SERVICECREDS: serviceCredentials };
-    //const command = getCommand(action, project, param);
-    //const command = `ACTIVESNAPID=${activeSnapId} SERVICECREDS='${serviceCredentials}' ${env} ${cmd}`;
+exports.createHandlers = (app) => {  
+  // POST handler for invokeAction
+  app.post('/invokeAction', logRequest, checkJwt, function(req, res){
+    const invoke = async (payload) => {
+      const result = await invokeAction(payload);
+      res.status(200).send(result);
+    }
 
-    // log a message before executing command
-    console.log(`executing command: ${script}`);
+    invoke(req.body);
+  });
+}
+
+const invokeAction = async (request) => {
+  try {
+    const activeSnapId = request.activeSnapId;
+    const connectionInfo = request.connectionInfo;
+    const param = request.param;
+    if (!activeSnapId || !connectionInfo || !param) {
+      console.error('invokeAction: missing one of activeSnapId, connectionInfo, or param in request');
+      return null;
+    }
+
+    // get required parameters
+    const action = param.action;
+    if (!action) {
+      console.error('invokeAction: missing required parameter "action"');
+      return null;
+    }
+
+    const project = param.project;
+    if (!project) {
+      console.error('invokeAction: missing required parameter "project"');
+      return null;
+    }
+
+    // IMPLEMENTATION NOTE:
+    //   current implementation shell-execs gcloud SDK commands, because the REST API for 
+    //   google cloud build and google cloud run is pretty gnarly, and the node.js packages 
+    //   are either difficult to use or nonexistent.
+
+    // set up the environment
+    const serviceCredentials = await getServiceCredentials(connectionInfo);
+    if (!serviceCredentials) {
+      console.error(`invokeAction: service credentials not found`);
+      return null;
+    }
+
+    console.log(`gcp: executing action ${action} in project ${project}`);
+
+    // construct script name, environment, and full command
+    const env = getEnvironment(param);
+    const cmd = getCommand(action, project, param);
+    const command = `ACTIVESNAPID=${activeSnapId} SERVICECREDS='${serviceCredentials}' ${env} ${cmd}`;
+    
+    // run registered functions on the worker via exec
+    //const output = await pool.exec('invokeAction', [action, serviceCredentials, activeSnapId, param]);
 
     // setup environment
-    //setupEnvironment(serviceCredentials, activeSnapId, project);
+    setupEnvironment(serviceCredentials, activeSnapId, project);
 
-    // execute the action and obtain the output
-    const output = await executeCommand(script, env);
-    /*
-    exec(command, function(code, stdout, stderr) {
-      // setup environment
-      teardownEnvironment(activeSnapId, project);
+    // execute command synchronously
+    const output = exec(command);
 
-      // log a message after executing command
-      console.log(`finished executing command: ${command}, return code ${code}`);
-      
-      // return to caller
-      return { code, stdout, stderr };
-    });
+    // teardown environment
+    teardownEnvironment(activeSnapId, project);
 
-    return `gcp: executed ${command}`;*/
+    console.log(`gcp: finished executing action ${action} with output ${output}`);
+
+    // return output
     return output;
   } catch (error) {
     console.log(`invokeAction: caught exception: ${error}`);
@@ -58,25 +97,6 @@ const invokeAction = async (action, serviceCredentials, activeSnapId, param) => 
   }
 }
 
-workerpool.worker({
-  invokeAction: invokeAction
-});
-
-
-const executeCommand = async (command, env) => {
-  try {
-    // execute asynchronously so as to not block the web thread
-    console.log(`executing command ${command}`);
-    console.log(`dirName: ${__dirname}`);
-    const returnVal = await execAsync(command, [], { env: env });
-    return returnVal;
-  } catch (error) {
-    console.error(`executeCommand: caught exception: ${error}`);
-    return error;
-  }
-}
-
-/*
 const getCommand = (action, project, param) => {
   try {
     const image = param.image;
@@ -113,20 +133,17 @@ const getCommand = (action, project, param) => {
     return null;
   }
 }
-*/
 
 const getEnvironment = (param) => {
-  //let env = '';
-  const env = {};
+  let env = '';
+  //const env = {};
   for (const key in param) {
-    //env += `${key.toUpperCase()}=${param[key]} `;
-    const upperKey = key.toUpperCase();
-    env[upperKey] = param[key];
+    env += `${key.toUpperCase()}=${param[key]} `;
+    //const upperKey = key.toUpperCase();
+    //env[upperKey] = param[key];
   }
   return env;
 }
-
-/*
 
 const getServiceCredentials = async (connectionInfo) => {
   try {
@@ -180,4 +197,3 @@ const teardownEnvironment = (activeSnapId, project) => {
     return null;
   }
 } 
-*/

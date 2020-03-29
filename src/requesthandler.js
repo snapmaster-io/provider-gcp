@@ -27,14 +27,8 @@ exports.checkJwt = jwt({
   algorithms: [ 'RS256' ]
 });
   
-// create middleware that will log all requests, including userId, email, and impersonated UserId
-// it will also set the userId property on the request object for future pipeline stages
-exports.processUser = (req, res, next) => {
-  const userId = req.user['sub'];
-  const email = req.user[`${auth0Config.audience}/email`];
-  const impersonatedUserId = req.headers.impersonateduser;
-  const processingAs = impersonatedUserId ? `, processing as ${impersonatedUserId}` : '';
-  console.log(`${req.method} ${req.url}: userId: ${userId} email: ${email}${processingAs}`);
-  req.userId = impersonatedUserId || userId;
+// create middleware that will log all requests
+exports.logRequest = (req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
   next();
 };

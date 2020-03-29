@@ -1,75 +1,22 @@
-// GCP provider
+// GCP provider service for action execution
 
-// exports:
-//   apis.
-//
-//   createHandlers(app): create all route handlers
-// 
-//   provider: provider name
-//   image: provider image url (local to SPA)
-//   type: provider type (simple or link)
-//   definition: provider definition
+const { checkJwt, logRequest } = require('./requesthandler');
+const { execFile } = require('child_process');
 
-//const axios = require('axios');
-const { mkdir, cd, rm, echo, exec, tempdir } = require('shelljs');
-//const googleauth = require('../../services/googleauth');
-//const provider = require('../provider');
-//const database = require('../../data/database');
-const requesthandler = require('./requesthandler');
-//const environment = require('./environment');
-const workerpool = require('workerpool');
-
-// create a worker pool using an external worker script
-const pool = workerpool.pool(__dirname + '/actions.js');
-
-const providerName = 'gcp';
-
-const actions = {
-  build: 'build',
-  deploy: 'deploy'
+const execAsync = (cmd, args, options) => {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, options, (error, stdout, stderr) => {
+      resolve({ error, stdout, stderr });
+    });
+  });
 }
 
-// get GCP configuration
-//const gcpConfig = environment.getConfig(providerName);
-/*
-exports.provider = providerName;
-exports.image = `/${providerName}-logo.png`;
-exports.type = provider.simpleProvider;
-exports.definition = provider.getDefinition(providerName);
-*/
-/*
-// api's defined by this provider
-exports.apis = {
-  getProjects: {
-    name: 'getProjects',
-    provider: 'google-oauth2',
-    entity: 'google-oauth2:projects',
-    arrayKey: 'projects',
-    itemKey: 'projectId'
-  },
-};
-*/
-
 exports.createHandlers = (app) => {
-  // Get GCP projects endpoint
-  /*
-  app.get('/gcp', requesthandler.checkJwt, requesthandler.processUser, function(req, res){
-    const refresh = req.query.refresh || false;  
-
-    requesthandler.getData(
-      res, 
-      req.userId, 
-      exports.apis.getProjects, 
-      null,     // default entity name
-      [req.userId], // parameter array
-      refresh);
-  });
-  */
-  
-  app.post('/invokeAction', requesthandler.checkJwt, requesthandler.processUser, function(req, res){
+  // POST handler for invokeAction  
+  app.post('/invokeAction', logRequest, checkJwt, function(req, res){
     const invoke = async (payload) => {
       const result = await invokeAction(payload);
-      res.status(200).body(result);
+      res.status(200).send(result);
     }
 
     invoke(req.body);
@@ -104,49 +51,23 @@ const invokeAction = async (request) => {
     //   google cloud build and google cloud run is pretty gnarly, and the node.js packages 
     //   are either difficult to use or nonexistent.
 
-    // set up the environment
+    // obtain the service creds from the connectionInfo
     const serviceCredentials = await getServiceCredentials(connectionInfo);
     if (!serviceCredentials) {
       console.error(`invokeAction: service credentials not found`);
       return null;
     }
 
-    // run registered functions on the worker via exec
     console.log(`gcp: executing action ${action} in project ${project}`);
 
-    const output = await pool.exec('invokeAction', [action, serviceCredentials, activeSnapId, param]);
+    // construct script name, environment, and full command
+    const script = `./src/actions/${action}.sh`;
+    const env = { ...process.env, ...getEnvironment(param), ACTIVESNAPID: activeSnapId, SERVICECREDS: serviceCredentials };
+    const output = await executeCommand(script, env);
 
     console.log(`gcp: finished executing action ${action} with output ${output}`);
 
-    /*
-    // construct script name, environment, and full command
-    //const script = `./src/providers/${providerName}/${action}.sh`;
-    //const env = getEnvironment(param);
-    //const env = { ...process.env, ...getEnvironment(param), ACTIVESNAPID: activeSnapId, SERVICECREDS: serviceCredentials };
-    const command = getCommand(action, project, param);
-    //const command = `ACTIVESNAPID=${activeSnapId} SERVICECREDS='${serviceCredentials}' ${env} ${cmd}`;
-
-    // log a message before executing command
-    console.log(`executing command: ${command}`);
-
-    // setup environment
-    setupEnvironment(serviceCredentials, activeSnapId, project);
-
-    // execute the action and obtain the output
-    //const output = await executeCommand(script, env);
-    exec(command, function(code, stdout, stderr) {
-      // setup environment
-      teardownEnvironment(activeSnapId, project);
-
-      // log a message after executing command
-      console.log(`finished executing command: ${command}, return code ${code}`);
-      
-      // return to caller
-      return { code, stdout, stderr };
-    });
-
-    return `gcp: executed ${command}`;
-    */
+    // return output
     return output;
   } catch (error) {
     console.log(`invokeAction: caught exception: ${error}`);
@@ -166,50 +87,13 @@ const executeCommand = async (command, env) => {
   }
 }
 
-const getCommand = (action, project, param) => {
-  try {
-    const image = param.image;
-    if (!image) {
-      console.error(`getCommand: action ${action} requires image name`);
-      return null;
-    }
-
-    // set up the base command with the account and project information
-    const baseCommand = `gcloud --account snapmaster@${project}.iam.gserviceaccount.com --project ${project} `;
-
-    // return the right shell command to exec for the appropriate action
-    switch (action) {
-      case actions.build:
-        return `${baseCommand} builds submit --tag gcr.io/${project}/${image}`;
-      case actions.deploy: 
-        const service = param.service;
-        if (!service) {
-          console.error(`getCommand: action ${action} requires service name`);
-          return null;
-        }
-        const region = param.region;
-        if (!region) {
-          console.error(`getCommand: action ${action} requires region name`);
-          return null;
-        }
-        return `${baseCommand} run deploy ${service} --image gcr.io/${project}/${image} --platform managed --allow-unauthenticated --region ${region}`;
-      default:
-        console.error(`getCommand: unknown command ${action}`);
-        return null;
-    }
-  } catch (error) {
-    console.error(`getCommand: caught exception: ${error}`);
-    return null;
-  }
-}
-
 const getEnvironment = (param) => {
-  let env = '';
-  //const env = {};
+  //let env = '';
+  const env = {};
   for (const key in param) {
-    env += `${key.toUpperCase()}=${param[key]} `;
-    //const upperKey = key.toUpperCase();
-    //env[upperKey] = param[key];
+    //env += `${key.toUpperCase()}=${param[key]} `;
+    const upperKey = key.toUpperCase();
+    env[upperKey] = param[key];
   }
   return env;
 }
@@ -228,41 +112,3 @@ const getServiceCredentials = async (connectionInfo) => {
     return null;
   }
 }
-
-const setupEnvironment = (serviceCredentials, activeSnapId, project) => {
-  try {
-    // create temporary directory
-    const tmp = tempdir();
-    const dirName = `${tmp}/${activeSnapId}`;
-    mkdir(dirName);
-    cd(dirName);
-
-    // create creds.json file
-    // BUGBUG: make sure this doesn't log to the console
-    echo(serviceCredentials).to('creds.json');
-
-    // execute the gcloud auth call
-    const output = exec(`gcloud auth activate-service-account snapmaster@${project}.iam.gserviceaccount.com --key-file=creds.json --project=${project}`);  
-    return output;
-  } catch (error) {
-    console.error(`setupEnvironment: caught exception: ${error}`);
-    return null;
-  }
-}
-
-const teardownEnvironment = (activeSnapId, project) => {
-  try {
-    // remove the cached gcloud credential
-    const output = exec(`gcloud auth revoke snapmaster@${project}.iam.gserviceaccount.com`);  
-
-    // remove temporary directory and everything in it
-    const tmp = tempdir();
-    const dirName = `${tmp}/${activeSnapId}`;
-    rm('-rf', dirName);
-
-    return output;
-  } catch (error) {
-    console.error(`teardownEnvironment: caught exception: ${error}`);
-    return null;
-  }
-} 
