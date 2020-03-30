@@ -3,16 +3,15 @@
 # set up work directory
 mkdir /tmp/$ACTIVESNAPID
 cd /tmp/$ACTIVESNAPID
-echo $SERVICECREDS >creds.json
 
-# set up gcloud authentication
-gcloud auth activate-service-account snapmaster@$SM_project.iam.gserviceaccount.com --key-file=creds.json --project=$SM_project
+# set up authentication to gcr.io
+gcrane auth login gcr.io -u _json_key -p "$SERVICECREDS"
 
-# copy the image
-gcrane cp $SM_repo gcr.io/$SM_project/$SM_image
+# pull the image into a tar file
+gcrane pull $SM_repo $SM_image.tar
 
-# revoke the credentials
-gcloud auth revoke snapmaster@$SM_project.iam.gserviceaccount.com
+# push the tar file into the gcr.io registry
+gcrane push $SM_image.tar gcr.io/$SM_project/$SM_image
 
 # remove the work directory
 cd /

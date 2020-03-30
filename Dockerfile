@@ -5,7 +5,6 @@ FROM gcr.io/snapmaster-dev/gcloud-node-image:latest
 
 # copy gcrane (utility to pull/push docker images without docker CLI, which requires 
 # running privileged, something not yet possible with google cloud run)
-COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 COPY --from=0 /ko-app/gcrane /usr/local/bin/gcrane
 
 # Create and change to the app directory.
