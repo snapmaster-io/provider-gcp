@@ -27,10 +27,9 @@ exports.createHandlers = (app) => {
 const invokeAction = async (request) => {
   try {
     const activeSnapId = request.activeSnapId;
-    const connectionInfo = request.connectionInfo;
     const param = request.param;
-    if (!activeSnapId || !connectionInfo || !param) {
-      console.error('invokeAction: missing one of activeSnapId, connectionInfo, or param in request');
+    if (!activeSnapId || !param) {
+      console.error('invokeAction: missing one of activeSnapId or param in request');
       return null;
     }
 
@@ -47,13 +46,20 @@ const invokeAction = async (request) => {
       return null;
     }
 
+    // gcp:projects contains the key field that has service credential information
+    const gcpProject = param['gcp:projects'];
+    if (!gcpProject) {
+      console.error('invokeAction: missing required parameter "gcp:projects"');
+      return null;
+    }
+
     // IMPLEMENTATION NOTE:
     //   current implementation shell-execs scripts containing gcloud SDK commands, because 
     //   the REST API for google cloud build and google cloud run is pretty gnarly, and the  
     //   node.js packages are either difficult to use or nonexistent.
 
-    // obtain the service creds from the connectionInfo
-    const serviceCredentials = await getServiceCredentials(connectionInfo);
+    // obtain the service creds from the gcpProject
+    const serviceCredentials = await getServiceCredentials(gcpProject);
     if (!serviceCredentials) {
       console.error(`invokeAction: service credentials not found`);
       return null;
@@ -98,16 +104,16 @@ const getEnvironment = (param) => {
   return env;
 }
 
-// get the service credentials from the keyfile content stored in the connection info
-const getServiceCredentials = async (connectionInfo) => {
+// get the service credentials from the keyfile content stored in the GCP project  info
+const getServiceCredentials = async (gcpProject) => {
   try {
-    const key = connectionInfo && connectionInfo.find(c => c.name === 'key');
+    const key = gcpProject.key;
     if (!key) {
-      console.error('getServiceCredentials: could not find key in connection info');
+      console.error('getServiceCredentials: could not find key in gcp:projects');
       return null;
     }
 
-    return key.value;
+    return key;
   } catch (error) {
     console.error(`getServiceCredentials: caught exception: ${error}`);
     return null;
