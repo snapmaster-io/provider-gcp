@@ -74,7 +74,12 @@ const invokeAction = async (request) => {
     // execute the command and await its output
     const output = await executeCommand(script, env);
 
-    console.log(`gcp: finished executing action ${action}, stdout: ${output && output.stdout}, stderr: ${output && output.stderr}`);
+    // construct output string message
+    const outputString = 
+      `${output && output.error && output.error.message ? `error: ${output.error.message}, ` : ''}` + 
+      `stdout: ${output && output.stdout}, stderr: ${output && output.stderr}`;
+
+    console.log(`gcp: finished executing action ${action}; output: ${outputString}`);
 
     // return output
     return output;
