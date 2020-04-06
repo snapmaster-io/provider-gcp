@@ -49,13 +49,14 @@ Contains all the config for the project.  These files aren't committed to source
 
 The provider expects an `auth0_config_{dev|prod}.json` file for application keys and secret keys for your Auth0 tenant.
 
+```
 {
   "domain": "YOURDOMAIN.auth0.com",
   "client_id": "THE CLIENT ID FOR YOUR DOMAIN",
   "client_secret": "THE CLIENT SECRET FOR YOUR DOMAIN",
   "audience": "https://api.snapmaster.io"
 }
-
+```
 
 ### `scripts`
 
