@@ -3,6 +3,11 @@
 const { checkJwt, logRequest } = require('./requesthandler');
 const { execFile } = require('child_process');
 
+// define provider-specific constants
+const providerName = 'gcp';
+const entityName = `${providerName}:projects`;
+const defaultEntityName = `${entityName}:default`;
+
 const execAsync = (cmd, args, options) => {
   return new Promise((resolve, reject) => {
     execFile(cmd, args, options, (error, stdout, stderr) => {
@@ -46,10 +51,12 @@ const invokeAction = async (request) => {
       return null;
     }
 
-    // gcp:projects contains the key field that has service credential information
-    const gcpProject = param['gcp:projects'];
-    if (!gcpProject) {
-      console.error('invokeAction: missing required parameter "gcp:projects"');
+    // get the correct credentials for the project (either passed explicitly, or the default)
+    const projectInfo = (project === defaultEntityName) ? 
+      connectionInfo :
+      param[entityName];
+    if (!projectInfo) {
+      console.error(`invokeAction: missing required parameter ${entityName}`);
       return null;
     }
 
@@ -59,7 +66,7 @@ const invokeAction = async (request) => {
     //   node.js packages are either difficult to use or nonexistent.
 
     // obtain the service creds from the gcpProject
-    const serviceCredentials = await getServiceCredentials(gcpProject);
+    const serviceCredentials = await getServiceCredentials(projectInfo);
     if (!serviceCredentials) {
       console.error(`invokeAction: service credentials not found`);
       return null;
