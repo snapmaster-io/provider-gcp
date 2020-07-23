@@ -85,8 +85,7 @@ exports.createTrigger = async (request) => {
 
     // set up a push subscription for the production environment
     const subName = `snapmaster-${activeSnapId}-${topicName}`;
-    const providerUrl = 'https://provider-gcp-dev.snapmaster.io';
-    // const providerUrl = environment.getProviderUrl(providerName);
+    const providerUrl = environment.getProviderUrl(providerName);
     const endpoint = encodeURI(`${providerUrl}/${providerName}/webhooks/${userId}/${activeSnapId}`);
     const sub = await pubsub.createPushSubscription(serviceCredentials, topic, subName, endpoint, serviceCredentials.client_email);
     if (!sub) {
@@ -193,35 +192,16 @@ exports.deleteTrigger = async (request) => {
 
 exports.handleTrigger = async (userId, activeSnapId, event, payload) => {
   try {
-    if (event !== 'post') {
+    if (event !== 'pubsub') {
       console.error(`handleTrigger: unknown event ${event}`);
       return null;
     }
-    
-    const triggerKey = `${userId}:${activeSnapId}`;
-    console.log(`${providerName}: triggered ${triggerKey} webhook`);
-
-    // since this provider must track the state of its triggers, check first
-    // whether the trigger is still active before invoking the snap engine
-    const triggerInfo = await getTrigger(triggerKey);
-    if (!triggerInfo) {
-      const message = `could not find trigger key ${triggerKey}`;
-      console.error(`handleTrigger: ${message}`);
-      return { status: 'error', message: message };
-    }
-
-    // check secret (which is a simple property on the body)
-    if (payload.secret !== triggerInfo.secret) {
-      const message = `secret in request did not match trigger info`;
-      console.error(`handleTrigger: ${message}`);
-      return { status: 'error', message: message };
-    }
-
+        
     // invoke the snap engine
-    const response = await callSnapEngine(userId, activeSnapId, event, payload)
+    const response = await callSnapEngine(userId, activeSnapId, event, payload);
     return response;
   } catch (error) {
-    console.log(`handleTrigger: caught exception: ${error}`);
+    console.error(`handleTrigger: caught exception: ${error}`);
     return null;
   }
 }
@@ -235,9 +215,6 @@ const callSnapEngine = async (userId, activeSnapId, event, payload) => {
       console.error('createTrigger: could not retrieve API access token');
       return null;
     }
-
-    // remove the secret passed in
-    delete payload.secret;
 
     // construct snap engine dispatch URL
     const snapEngineUrl = `${environment.getUrl()}/executesnap/${userId}/${activeSnapId}`;
@@ -261,7 +238,6 @@ const callSnapEngine = async (userId, activeSnapId, event, payload) => {
     const message = `${providerName}: invoked snap engine at ${snapEngineUrl}`;
     console.log(message);
     return { status: 'success', message: message };
-    ;
   } catch (error) {
     console.error(`callSnapEngine: caught exception: ${error}`);
     return null;

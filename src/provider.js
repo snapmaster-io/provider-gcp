@@ -34,9 +34,20 @@ exports.createHandlers = (app) => {
       const activeSnapId = req.params.activeSnapId;
       console.log(`POST /${providerName}/webhooks: userId ${userId}, activeSnapId ${activeSnapId}`);
 
+      /*
+      // validate JWT
+      const auth = req.headers.authorization;
+      const [, token] = auth.match(/Bearer (.*)/);
+    
+      // validate the authorization bearer JWT
+      if (!google.validateJwt(token)) {    
+        res.status(401).send();
+      }
+      */
+
       // handle the webhook
       const handle = async (payload) => {
-        const response = await trigger.handleTrigger(userId, activeSnapId, 'post', payload) || 
+        const response = await trigger.handleTrigger(userId, activeSnapId, 'pubsub', payload) || 
           { status: 'error', message: `${providerName}: could not trigger active snap ${userId}:${activeSnapId} `};
 
         res.status(200).send(response);
