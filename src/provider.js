@@ -3,6 +3,7 @@
 const { checkJwt, logRequest } = require('./requesthandler');
 const { execFile } = require('child_process');
 const trigger = require('./trigger.js');
+const googleauth = require('./googleauth');
 
 // define provider-specific constants
 const providerName = 'gcp';
@@ -34,16 +35,15 @@ exports.createHandlers = (app) => {
       const activeSnapId = req.params.activeSnapId;
       console.log(`POST /${providerName}/webhooks: userId ${userId}, activeSnapId ${activeSnapId}`);
 
-      /*
       // validate JWT
       const auth = req.headers.authorization;
       const [, token] = auth.match(/Bearer (.*)/);
     
       // validate the authorization bearer JWT
-      if (!google.validateJwt(token)) {    
+      if (!googleauth.validateJwt(token)) {    
+        console.error(`${providerName}/webhooks: failed to validate JWT`);
         res.status(401).send();
       }
-      */
 
       // handle the webhook
       const handle = async (payload) => {

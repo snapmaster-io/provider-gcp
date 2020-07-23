@@ -196,7 +196,13 @@ exports.handleTrigger = async (userId, activeSnapId, event, payload) => {
       console.error(`handleTrigger: unknown event ${event}`);
       return null;
     }
-        
+    
+    const message = payload && payload.message && payload.message.data;
+    if (message) {
+      payload.message.data = Buffer.from(message, 'base64').toString('utf-8');
+      console.log(`\tData: ${message}`);
+    }
+
     // invoke the snap engine
     const response = await callSnapEngine(userId, activeSnapId, event, payload);
     return response;
