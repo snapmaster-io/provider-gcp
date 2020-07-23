@@ -2,6 +2,7 @@
 
 const { checkJwt, logRequest } = require('./requesthandler');
 const { execFile } = require('child_process');
+const trigger = require('./trigger.js');
 
 // define provider-specific constants
 const providerName = 'gcp';
@@ -18,14 +19,39 @@ const execAsync = (cmd, args, options) => {
 }
 
 exports.createHandlers = (app) => {
+  app.post('/createTrigger', logRequest, checkJwt, function(req, res){
+    (async () => res.status(200).send(await trigger.createTrigger(req.body)))();
+  });
+
+  app.post('/deleteTrigger', logRequest, checkJwt, function(req, res){
+    (async () => res.status(200).send(await trigger.deleteTrigger(req.body)))();
+  });
+
+  // POST webhooks endpoint
+  app.post(`/${providerName}/webhooks/:userId/:activeSnapId`, function(req, res){
+    try {
+      const userId = decodeURI(req.params.userId);
+      const activeSnapId = req.params.activeSnapId;
+      console.log(`POST /${providerName}/webhooks: userId ${userId}, activeSnapId ${activeSnapId}`);
+
+      // handle the webhook
+      const handle = async (payload) => {
+        const response = await trigger.handleTrigger(userId, activeSnapId, 'post', payload) || 
+          { status: 'error', message: `${providerName}: could not trigger active snap ${userId}:${activeSnapId} `};
+
+        res.status(200).send(response);
+      }
+
+      handle(req.body);
+    } catch (error) {
+      console.error(`${providerName} webhook caught exception: ${error}`);
+      res.status(500).send(error);
+    }
+  });
+
   // POST handler for invokeAction  
   app.post('/invokeAction', logRequest, checkJwt, function(req, res){
-    const invoke = async (payload) => {
-      const result = await invokeAction(payload);
-      res.status(200).send(result);
-    }
-
-    invoke(req.body);
+    (async () => res.status(200).send(await invokeAction(req.body)))();
   });
 }
 
@@ -116,7 +142,7 @@ const getEnvironment = (param) => {
   return env;
 }
 
-// get the service credentials from the keyfile content stored in the GCP project  info
+// get the service credentials from the keyfile content stored in the GCP project info
 const getServiceCredentials = async (gcpProject) => {
   try {
     const key = gcpProject.key;

@@ -61,9 +61,22 @@ exports.getEndpoint = () => {
   return endpoint;
 }
 
+exports.getProviderUrl = (providerName) => {
+  if (exports.getDevMode()) {
+    return 'http://localhost:8081';
+  } else {
+    const endpoint = `https://provider-${providerName}${environment === 'dev' ? '-dev' : ''}.snapmaster.io`;
+    return endpoint;  
+  }
+}
+
 exports.getUrl = () => {
-  const endpoint = environment === 'dev' ? 'https://dev.snapmaster.io' 
-                                         : 'https://www.snapmaster.io';
-  return endpoint;
+  if (exports.getDevMode()) {
+    return 'http://localhost:8080';
+  } else {
+    const endpoint = environment === 'dev' ? 'https://dev.snapmaster.io' 
+                                           : 'https://www.snapmaster.io';
+    return endpoint;
+  }
 }
 
