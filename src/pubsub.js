@@ -84,7 +84,7 @@ exports.deleteSubscription = async (keyInfo, subName) => {
       return null;
     }
 
-    // create the topic
+    // delete the subscription
     const response = await pubsub.subscription(subName).delete();
     return response && response.length && response[0];
   } catch (error) {

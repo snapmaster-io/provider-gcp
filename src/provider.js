@@ -4,6 +4,7 @@ const { checkJwt, logRequest } = require('./requesthandler');
 const { execFile } = require('child_process');
 const trigger = require('./trigger.js');
 const googleauth = require('./googleauth');
+const { successvalue, errorvalue } = require('./returnvalue');
 
 // define provider-specific constants
 const providerName = 'gcp';
@@ -69,23 +70,30 @@ exports.createHandlers = (app) => {
 const invokeAction = async (request) => {
   try {
     const activeSnapId = request.activeSnapId;
+    if (!activeSnapId) {
+      const message = `missing required parameter "activeSnapId"`;
+      console.error(`invokeAction: ${message}`);
+      return errorvalue(message);
+    }
     const param = request.param;
-    if (!activeSnapId || !param) {
-      console.error('invokeAction: missing one of activeSnapId or param in request');
-      return null;
+    if (!param) {
+      const message = `missing required parameter "param"`;
+      console.error(`invokeAction: ${message}`);
+      return errorvalue(message);
     }
 
     // get required parameters
     const action = param.action;
     if (!action) {
-      console.error('invokeAction: missing required parameter "action"');
-      return null;
+      const message = `missing required parameter "action"`;
+      console.error(`invokeAction: ${message}`);
+      return errorvalue(message);
     }
-
     const project = param.project;
     if (!project) {
-      console.error('invokeAction: missing required parameter "project"');
-      return null;
+      const message = `missing required parameter "project"`;
+      console.error(`invokeAction: ${message}`);
+      return errorvalue(message);
     }
 
     // get the correct credentials for the project (either passed explicitly, or the default)
@@ -93,8 +101,9 @@ const invokeAction = async (request) => {
       connectionInfo :
       param[entityName];
     if (!projectInfo) {
-      console.error(`invokeAction: missing required parameter ${entityName}`);
-      return null;
+      const message = `missing required parameter "${entityName}"`;
+      console.error(`invokeAction: ${message}`);
+      return errorvalue(message);
     }
 
     // IMPLEMENTATION NOTE:
@@ -105,8 +114,9 @@ const invokeAction = async (request) => {
     // obtain the service creds from the gcpProject
     const serviceCredentials = await getServiceCredentials(projectInfo);
     if (!serviceCredentials) {
-      console.error(`invokeAction: service credentials not found`);
-      return null;
+      const message = `service credentials not found`;
+      console.error(`invokeAction: ${message}`);
+      return errorvalue(message);
     }
 
     console.log(`gcp: executing action ${action} in project ${project}`);
@@ -126,10 +136,10 @@ const invokeAction = async (request) => {
     console.log(`gcp: finished executing action ${action}; output: ${outputString}`);
 
     // return output
-    return output;
+    return successvalue(output);
   } catch (error) {
-    console.log(`invokeAction: caught exception: ${error}`);
-    return null;
+    console.error(`invokeAction: caught exception: ${error}`);
+    return errorvalue(error.message);
   }
 }
 
